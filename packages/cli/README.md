@@ -67,9 +67,13 @@ also added to the job summary.
 ## CI/CD
 
 Keep your Sinas config and packages in a folder of your repo, preview them on
-pull requests and install them on merge. Use an API key limited to what CI
-needs (`sinas.config.validate:all`, `sinas.config.apply:all`,
-`sinas.packages.install:all`), stored as a CI secret.
+pull requests and install them on merge. Create a deploy key in the console
+(Access Control → API Keys → **Make a deploy key**): it's linked to the
+built-in **Deployers** role, which holds exactly what CI needs
+(`sinas.config.validate:all`, `sinas.config.apply:all`,
+`sinas.packages.install:all`). Store it as a CI secret, one per environment,
+with an expiry: applying config is admin-level, since a config can create
+roles and assign them.
 
 ```yaml
 # .github/workflows/sinas.yml
