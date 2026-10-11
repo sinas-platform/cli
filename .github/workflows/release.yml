@@ -1,0 +1,48 @@
+# Publishes @sinas/cli to npm when a version tag is pushed:
+#
+#   1. bump "version" in packages/cli/package.json (and the CLI's .version()
+#      in src/index.ts), merge to main
+#   2. git tag v<version> && git push origin v<version>
+#
+# Auth: npm trusted publishing (OIDC, no token stored). One-time setup on
+# npmjs.com → @sinas/cli → Settings → Trusted publishing: GitHub Actions,
+# repository sinas-platform/cli, workflow release.yml. If an NPM_TOKEN secret
+# is set instead, that's used.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write   # trusted publishing + provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      # Trusted publishing needs npm 11.5.1+.
+      - run: npm install -g npm@latest
+      - name: Tag matches the package version
+        run: |
+          version=$(node -p "require('./packages/cli/package.json').version")
+          cli=$(grep -o "\.version('[^']*')" packages/cli/src/index.ts | sed "s/.version('\(.*\)')/\1/")
+          if [ "v$version" != "$GITHUB_REF_NAME" ] || [ "$cli" != "$version" ]; then
+            echo "Tag $GITHUB_REF_NAME, package.json $version, src/index.ts $cli: they must match." >&2
+            exit 1
+          fi
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Publish
+        working-directory: packages/cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
