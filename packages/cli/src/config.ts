@@ -39,6 +39,14 @@ export function loadConfig(cwd = process.cwd()): {
   const envUrl = process.env.SINAS_URL;
   const envKey = process.env.SINAS_API_KEY || process.env.SINAS_TOKEN;
   if (envUrl && envKey) return { config: { instance_url: envUrl, admin_token: envKey }, source: 'env' };
+  return loadSavedConfig(cwd);
+}
+
+/** The saved config files only (what `sinas login` reads and rewrites). */
+export function loadSavedConfig(cwd = process.cwd()): {
+  config: SinasConfig | null;
+  source: 'project' | 'global' | null;
+} {
   const projectCfg = readJson<SinasConfig>(projectPath(cwd));
   if (projectCfg) return { config: projectCfg, source: 'project' };
   const globalCfg = readJson<SinasConfig>(globalPath());

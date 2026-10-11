@@ -128,11 +128,42 @@ function printHuman(r: FileResult, mode: Mode): void {
   if (r.ok) ok(r.package ? `Installed ${r.package.name}@${r.package.version}` : mode === 'validate' ? 'Valid' : 'OK');
 }
 
+/** Text for a Markdown table cell: pipes escaped, newlines flattened. */
+function cell(text: string): string {
+  return text.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+}
+
+/** Inline code that survives backticks in the text. */
+function code(text: string): string {
+  const fence = text.includes('`') ? '``' : '`';
+  return `${fence}${text.includes('`') ? ` ${text} ` : text}${fence}`;
+}
+
+export function failureReport(mode: Mode, message: string, opts: { json?: boolean; markdown?: string }): void {
+  const title = { validate: 'Sinas validate', preview: 'Sinas plan', install: 'Sinas install' }[mode];
+  const report = `### ❌ ${title}\n\n- ❌ ${message}\n`;
+  if (opts.markdown) {
+    try {
+      writeFileSync(opts.markdown, report);
+    } catch {
+      // nothing more to do
+    }
+  }
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    try {
+      appendFileSync(process.env.GITHUB_STEP_SUMMARY, report);
+    } catch {
+      // not fatal
+    }
+  }
+  if (opts.json) console.log(JSON.stringify({ ok: false, mode, error: message, results: [] }, null, 2));
+}
+
 export function markdownReport(results: FileResult[], mode: Mode, target?: string): string {
   const title = { validate: 'Sinas validate', preview: 'Sinas plan', install: 'Sinas install' }[mode];
   const lines = [`### ${results.every((r) => r.ok) ? '✅' : '❌'} ${title}${target ? ` — ${target}` : ''}`, ''];
   for (const r of results) {
-    lines.push(`**${r.kind}** \`${r.path}\`${r.package ? ` → ${r.package.name}@${r.package.version}` : ''}`, '');
+    lines.push(`**${r.kind}** ${code(r.path)}${r.package ? ` → ${code(`${r.package.name}@${r.package.version}`)}` : ''}`, '');
     if (r.summary) {
       const c = counts(r.summary);
       lines.push(`${c.created} to create · ${c.updated} to update · ${c.deleted} to delete · ${c.unchanged} unchanged`, '');
@@ -141,7 +172,7 @@ export function markdownReport(results: FileResult[], mode: Mode, target?: strin
         lines.push('| | Kind | Name |', '|---|---|---|');
         for (const ch of changed) {
           const mark = ch.action === 'create' ? '➕' : ch.action === 'update' ? '✏️' : ch.action === 'delete' ? '🗑️' : ch.action;
-          lines.push(`| ${mark} | ${ch.resourceType} | \`${ch.resourceName}\` |`);
+          lines.push(`| ${mark} | ${cell(ch.resourceType)} | ${cell(code(ch.resourceName))} |`);
         }
         lines.push('');
       }

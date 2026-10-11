@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { parse as parseYaml, parseAllDocuments } from 'yaml';
 
 export const PACKAGE_FILE = 'sinas-package.yaml';
@@ -35,15 +35,6 @@ export function findConfigFile(cwd = process.cwd()): SinasYamlInfo | null {
   return readYamlMaybe(join(cwd, CONFIG_FILE));
 }
 
-export function findAllSinasFiles(cwd = process.cwd()): SinasYamlInfo[] {
-  const out: SinasYamlInfo[] = [];
-  const pkg = findPackageFile(cwd);
-  if (pkg) out.push(pkg);
-  const cfg = findConfigFile(cwd);
-  if (cfg) out.push(cfg);
-  return out;
-}
-
 const SKIP_DIRS = new Set(['node_modules', '.git', '.sinas', 'dist']);
 
 function yamlFilesIn(dir: string): string[] {
@@ -69,11 +60,15 @@ function yamlFilesIn(dir: string): string[] {
  */
 export function collectSinasFiles(paths: string[]): SinasYamlInfo[] {
   const out: SinasYamlInfo[] = [];
+  const seen = new Set<string>();  // overlapping paths: each file once
   for (const given of paths) {
     if (!existsSync(given)) throw new Error(`No such file or folder: ${given}`);
     const isDir = statSync(given).isDirectory();
     const files = isDir ? yamlFilesIn(given).sort() : [given];
     for (const file of files) {
+      const resolved = resolve(file);
+      if (seen.has(resolved)) continue;
+      seen.add(resolved);
       const docs = parseAllDocuments(readFileSync(file, 'utf8'));
       let found = 0;
       docs.forEach((doc, index) => {
@@ -97,4 +92,9 @@ export function collectSinasFiles(paths: string[]): SinasYamlInfo[] {
     }
   }
   return out;
+}
+
+/** sinas-config.yaml and sinas-package.yaml here, the ones that exist. */
+export function defaultSinasPaths(): string[] {
+  return [CONFIG_FILE, PACKAGE_FILE].filter((p) => existsSync(p));
 }

@@ -1,10 +1,10 @@
 import prompts from 'prompts';
-import { loadConfig, saveProjectConfig, type SinasConfig } from '../config.js';
+import { loadSavedConfig, saveProjectConfig, type SinasConfig } from '../config.js';
 import { SinasApi } from '../api.js';
 import { ok, fail, info, header, ui } from '../ui.js';
 
 export async function loginCommand(opts: { global?: boolean }): Promise<void> {
-  const { config: existing } = loadConfig();
+  const { config: existing } = loadSavedConfig();
 
   header('Sinas login');
   info(`Writing to ${opts.global ? '~/.sinas/config.json' : './.sinas/config.json'}`);

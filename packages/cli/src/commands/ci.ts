@@ -1,8 +1,8 @@
 import prompts from 'prompts';
 import { SinasApi } from '../api.js';
 import { loadConfig, requireConfig } from '../config.js';
-import { collectSinasFiles, findAllSinasFiles } from '../files.js';
-import { run, type Mode } from '../run.js';
+import { collectSinasFiles, defaultSinasPaths } from '../files.js';
+import { failureReport, run, type Mode } from '../run.js';
 import { fail, info, warn } from '../ui.js';
 import { collectVariables } from '../vars.js';
 
@@ -22,9 +22,19 @@ export interface RunCommandOptions {
  * without, sinas-config.yaml and sinas-package.yaml here, as before.
  */
 export async function runCommand(mode: Mode, paths: string[], opts: RunCommandOptions): Promise<void> {
-  const config = requireConfig();
+  let config;
+  let files;
+  let variables;
+  try {
+    config = requireConfig();
+    files = collectSinasFiles(paths.length > 0 ? paths : defaultSinasPaths());
+    variables = collectVariables(opts);
+  } catch (e) {
+    // Still leave the requested report (a PR comment step reads it).
+    failureReport(mode, (e as Error).message, opts);
+    throw e;
+  }
   const api = new SinasApi(config.instance_url, config.admin_token);
-  const files = paths.length > 0 ? collectSinasFiles(paths) : findAllSinasFiles();
   if (files.length === 0) {
     fail(
       paths.length > 0
@@ -52,7 +62,7 @@ export async function runCommand(mode: Mode, paths: string[], opts: RunCommandOp
     files,
     mode,
     {
-      variables: collectVariables(opts),
+      variables,
       instance: opts.instance,
       allowBroadRolePermissions: opts.allowBroadRolePermissions,
       prune: opts.prune,
