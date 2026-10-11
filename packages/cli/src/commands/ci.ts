@@ -11,6 +11,7 @@ export interface RunCommandOptions {
   varsFile?: string;
   instance?: string;
   allowBroadRolePermissions?: boolean;
+  prune?: boolean;
   json?: boolean;
   markdown?: string;
   yes?: boolean;
@@ -54,6 +55,7 @@ export async function runCommand(mode: Mode, paths: string[], opts: RunCommandOp
       variables: collectVariables(opts),
       instance: opts.instance,
       allowBroadRolePermissions: opts.allowBroadRolePermissions,
+      prune: opts.prune,
       json: opts.json,
       markdown: opts.markdown,
     },

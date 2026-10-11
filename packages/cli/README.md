@@ -57,8 +57,11 @@ Package variables, lowest to highest precedence:
 - `--var NAME=value` (repeatable).
 
 A preview or install that's missing a required variable fails and names it.
-Also: `--instance <name>` (multi-instance packages), `--json`, and
-`--allow-broad-role-permissions` (install). In GitHub Actions, the report is
+Also: `--prune` (config files: also remove what a file applied before but no
+longer declares — never another file's resources, anything edited by hand
+since, or secrets, LLM providers, database connections and dependencies; the
+preview lists what would go), `--instance <name>` (multi-instance packages),
+`--json`, and `--allow-broad-role-permissions` (install). In GitHub Actions, the report is
 also added to the job summary.
 
 ## CI/CD

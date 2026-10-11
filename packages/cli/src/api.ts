@@ -70,14 +70,18 @@ export class SinasApi {
     return this.request('POST', '/api/v1/config/validate', { config: yamlContent });
   }
 
-  applyConfig(yamlContent: string, dryRun = false): Promise<{
+  applyConfig(yamlContent: string, dryRun = false, prune = false): Promise<{
     success: boolean;
     summary: Record<string, Record<string, number>>;
     changes: Array<{ action: string; resourceType: string; resourceName: string; details?: string }>;
     errors: string[];
     warnings?: string[];
   }> {
-    return this.request('POST', '/api/v1/config/apply', { config: yamlContent, dryRun });
+    return this.request('POST', '/api/v1/config/apply', {
+      config: yamlContent,
+      dryRun,
+      ...(prune ? { prune: true } : {}),
+    });
   }
 
   // ─── Packages (kind: SinasPackage) ───

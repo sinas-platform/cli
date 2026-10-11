@@ -33,6 +33,7 @@ export interface RunOptions {
   variables: Record<string, unknown>;
   instance?: string;
   allowBroadRolePermissions?: boolean;
+  prune?: boolean;
   json?: boolean;
   markdown?: string;
 }
@@ -61,7 +62,7 @@ async function runOne(api: SinasApi, file: SinasYamlInfo, mode: Mode, opts: RunO
       return result;
     }
     if (file.kind === 'SinasConfig') {
-      const r = await api.applyConfig(file.content, mode === 'preview');
+      const r = await api.applyConfig(file.content, mode === 'preview', opts.prune);
       result.summary = r.summary;
       result.changes = r.changes;
       result.errors = (r.errors ?? []).map(asText);

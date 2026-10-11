@@ -34,6 +34,7 @@ function withRunOptions(cmd: Command, { install = false } = {}): Command {
     .option('--var <NAME=value>', 'Package variable (repeatable); also SINAS_VAR_<NAME> env vars', collect, [])
     .option('--vars-file <file>', 'YAML/JSON file of package variables (name: value)')
     .option('--instance <name>', 'Install name, for packages with multiInstance: true')
+    .option('--prune', 'Config files: also remove what each file applied before but no longer declares')
     .option('--json', 'Print the result as JSON')
     .option('--markdown <file>', 'Write a Markdown report (e.g. for a pull request comment)');
   if (install) {
