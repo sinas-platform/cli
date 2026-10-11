@@ -31,7 +31,22 @@ function readJson<T>(path: string): T | null {
   }
 }
 
-export function loadConfig(cwd = process.cwd()): { config: SinasConfig | null; source: 'project' | 'global' | null } {
+export function loadConfig(cwd = process.cwd()): {
+  config: SinasConfig | null;
+  source: 'env' | 'project' | 'global' | null;
+} {
+  // CI: SINAS_URL + SINAS_API_KEY (or SINAS_TOKEN) take precedence over files.
+  const envUrl = process.env.SINAS_URL;
+  const envKey = process.env.SINAS_API_KEY || process.env.SINAS_TOKEN;
+  if (envUrl && envKey) return { config: { instance_url: envUrl, admin_token: envKey }, source: 'env' };
+  return loadSavedConfig(cwd);
+}
+
+/** The saved config files only (what `sinas login` reads and rewrites). */
+export function loadSavedConfig(cwd = process.cwd()): {
+  config: SinasConfig | null;
+  source: 'project' | 'global' | null;
+} {
   const projectCfg = readJson<SinasConfig>(projectPath(cwd));
   if (projectCfg) return { config: projectCfg, source: 'project' };
   const globalCfg = readJson<SinasConfig>(globalPath());
@@ -43,7 +58,8 @@ export function requireConfig(cwd = process.cwd()): SinasConfig {
   const { config } = loadConfig(cwd);
   if (!config) {
     throw new Error(
-      'No Sinas config found. Run `sinas login` in this directory, or create ~/.sinas/config.json',
+      'No Sinas config found. Set SINAS_URL and SINAS_API_KEY (CI), run `sinas login` in this ' +
+        'directory, or create ~/.sinas/config.json',
     );
   }
   if (!config.instance_url || !config.admin_token) {

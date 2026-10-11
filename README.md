@@ -1,9 +1,12 @@
-# sinas-skills
+# Sinas CLI
 
-Skills and a CLI for AI coding agents (Claude Code, Cursor, etc.) building
-on [Sinas](https://github.com/sinas-platform/sinas).
+`sinas` — the command line for building on [Sinas](https://github.com/sinas-platform/sinas):
+validate, preview and install config and packages, from your terminal or from
+CI/CD (see [packages/cli](packages/cli)). It also ships two skills — plain
+markdown your coding agent (Claude Code, Cursor, …) reads — that `sinas init`
+drops into a repo.
 
-Two skills — plain markdown your coding agent reads — and one CLI:
+(This repo used to be `sinas-skills`; the old URL redirects here.)
 
 | Piece | Purpose |
 |---|---|

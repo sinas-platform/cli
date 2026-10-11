@@ -70,13 +70,18 @@ export class SinasApi {
     return this.request('POST', '/api/v1/config/validate', { config: yamlContent });
   }
 
-  applyConfig(yamlContent: string, dryRun = false): Promise<{
+  applyConfig(yamlContent: string, dryRun = false, prune = false): Promise<{
     success: boolean;
     summary: Record<string, Record<string, number>>;
     changes: Array<{ action: string; resourceType: string; resourceName: string; details?: string }>;
     errors: string[];
+    warnings?: string[];
   }> {
-    return this.request('POST', '/api/v1/config/apply', { config: yamlContent, dryRun });
+    return this.request('POST', '/api/v1/config/apply', {
+      config: yamlContent,
+      dryRun,
+      ...(prune ? { prune: true } : {}),
+    });
   }
 
   // ─── Packages (kind: SinasPackage) ───
@@ -85,27 +90,35 @@ export class SinasApi {
     return this.validateConfig(yamlContent);
   }
 
-  previewPackage(yamlContent: string, variables?: Record<string, unknown>): Promise<{
+  previewPackage(yamlContent: string, variables?: Record<string, unknown>, instance?: string): Promise<{
     success: boolean;
     summary: Record<string, Record<string, number>>;
     changes: Array<{ action: string; resourceType: string; resourceName: string; details?: string }>;
     errors: string[];
+    warnings?: string[];
     variables?: unknown;
     requires_input?: boolean;
   }> {
     return this.request('POST', '/api/v1/packages/preview', {
       source: yamlContent,
-      variables: variables ?? null,
+      variables: variables && Object.keys(variables).length > 0 ? variables : null,
+      ...(instance ? { instance } : {}),
     });
   }
 
-  installPackage(yamlContent: string, variables?: Record<string, unknown>): Promise<{
+  installPackage(
+    yamlContent: string,
+    variables?: Record<string, unknown>,
+    opts: { instance?: string; allowBroadRolePermissions?: boolean } = {},
+  ): Promise<{
     package: { id: string; name: string; version: string };
     apply: { success: boolean; summary: Record<string, Record<string, number>>; changes: unknown[]; errors: string[] };
   }> {
     return this.request('POST', '/api/v1/packages/install', {
       source: yamlContent,
-      variables: variables ?? null,
+      variables: variables && Object.keys(variables).length > 0 ? variables : null,
+      ...(opts.instance ? { instance: opts.instance } : {}),
+      ...(opts.allowBroadRolePermissions ? { allowBroadRolePermissions: true } : {}),
     });
   }
 
