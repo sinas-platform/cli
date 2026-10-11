@@ -1,6 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { parse as parseYaml } from 'yaml';
+import { parse as parseYaml, parseAllDocuments } from 'yaml';
 
 export const PACKAGE_FILE = 'sinas-package.yaml';
 export const CONFIG_FILE = 'sinas-config.yaml';
@@ -41,5 +41,60 @@ export function findAllSinasFiles(cwd = process.cwd()): SinasYamlInfo[] {
   if (pkg) out.push(pkg);
   const cfg = findConfigFile(cwd);
   if (cfg) out.push(cfg);
+  return out;
+}
+
+const SKIP_DIRS = new Set(['node_modules', '.git', '.sinas', 'dist']);
+
+function yamlFilesIn(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith('.') && entry.isDirectory()) continue;
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (!SKIP_DIRS.has(entry.name)) out.push(...yamlFilesIn(path));
+    } else if (/\.ya?ml$/i.test(entry.name)) {
+      out.push(path);
+    }
+  }
+  return out;
+}
+
+/**
+ * The Sinas documents in the given files and folders (folders are searched
+ * recursively for *.yaml / *.yml), in path order. A file may hold several
+ * documents separated by `---`; each becomes its own entry. YAML that isn't
+ * a SinasConfig or SinasPackage is skipped when found in a folder, and an
+ * error when named directly.
+ */
+export function collectSinasFiles(paths: string[]): SinasYamlInfo[] {
+  const out: SinasYamlInfo[] = [];
+  for (const given of paths) {
+    if (!existsSync(given)) throw new Error(`No such file or folder: ${given}`);
+    const isDir = statSync(given).isDirectory();
+    const files = isDir ? yamlFilesIn(given).sort() : [given];
+    for (const file of files) {
+      const docs = parseAllDocuments(readFileSync(file, 'utf8'));
+      let found = 0;
+      docs.forEach((doc, index) => {
+        if (doc.errors.length > 0) {
+          out.push({ path: file, content: doc.toString(), parsed: null, kind: 'unknown' });
+          found += 1;
+          return;
+        }
+        const parsed = doc.toJS() as Record<string, unknown> | null;
+        const kind = parsed?.kind;
+        if (kind !== 'SinasConfig' && kind !== 'SinasPackage') return;
+        out.push({
+          path: docs.length > 1 ? `${file}#${index + 1}` : file,
+          content: doc.toString(),
+          parsed,
+          kind,
+        });
+        found += 1;
+      });
+      if (!isDir && found === 0) throw new Error(`${file} holds no SinasConfig or SinasPackage document`);
+    }
+  }
   return out;
 }

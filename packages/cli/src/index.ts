@@ -6,7 +6,7 @@ const program = new Command();
 program
   .name('sinas')
   .description('CLI for building on Sinas: author, validate, preview, and install packages')
-  .version('0.2.1');
+  .version('0.3.0');
 
 program
   .command('init')
@@ -26,30 +26,45 @@ program
     await loginCommand(opts);
   });
 
-program
-  .command('validate')
-  .description('Validate sinas-package.yaml and sinas-config.yaml')
-  .action(async () => {
-    const { validateCommand } = await import('./commands/validate.js');
-    await validateCommand();
-  });
+const collect = (value: string, previous: string[] = []) => [...previous, value];
 
-program
-  .command('preview')
-  .description('Dry-run the package and/or config — show what would change')
-  .action(async () => {
-    const { previewCommand } = await import('./commands/preview.js');
-    await previewCommand();
-  });
+function withRunOptions(cmd: Command, { install = false } = {}): Command {
+  cmd
+    .argument('[paths...]', 'Files or folders of SinasConfig / SinasPackage YAML (default: sinas-config.yaml + sinas-package.yaml here)')
+    .option('--var <NAME=value>', 'Package variable (repeatable); also SINAS_VAR_<NAME> env vars', collect, [])
+    .option('--vars-file <file>', 'YAML/JSON file of package variables (name: value)')
+    .option('--instance <name>', 'Install name, for packages with multiInstance: true')
+    .option('--json', 'Print the result as JSON')
+    .option('--markdown <file>', 'Write a Markdown report (e.g. for a pull request comment)');
+  if (install) {
+    cmd
+      .option('-y, --yes', 'Skip the confirmation prompt (required when not in a terminal, e.g. CI)')
+      .option('--allow-broad-role-permissions', 'Accept package roles that grant beyond its own namespaces');
+  }
+  return cmd;
+}
 
-program
-  .command('install')
-  .description('Apply sinas-config.yaml (if present), then install sinas-package.yaml')
-  .option('-y, --yes', 'Skip the confirmation prompt')
-  .action(async (opts) => {
-    const { installCommand } = await import('./commands/install.js');
-    await installCommand({ yes: opts.yes });
-  });
+withRunOptions(
+  program.command('validate').description('Validate Sinas config and package files (errors exit 1)'),
+).action(async (paths: string[], opts) => {
+  const { runCommand } = await import('./commands/ci.js');
+  await runCommand('validate', paths, opts);
+});
+
+withRunOptions(
+  program.command('preview').description('Dry run: show what applying/installing would change (errors exit 1)'),
+).action(async (paths: string[], opts) => {
+  const { runCommand } = await import('./commands/ci.js');
+  await runCommand('preview', paths, opts);
+});
+
+withRunOptions(
+  program.command('install').description('Apply config files, then install packages (stops at the first failure)'),
+  { install: true },
+).action(async (paths: string[], opts) => {
+  const { runCommand } = await import('./commands/ci.js');
+  await runCommand('install', paths, opts);
+});
 
 program
   .command('status')
