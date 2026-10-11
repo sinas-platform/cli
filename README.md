@@ -60,3 +60,17 @@ the `X-Sinas-Version` response header and at `GET /info`. The instance's
 ## License
 
 AGPL-3.0
+
+## Releasing
+
+Bump the version in `packages/cli/package.json` and in `.version()` in
+`packages/cli/src/index.ts`, merge to `main`, then push a matching tag:
+
+```bash
+git tag v0.3.0 && git push origin v0.3.0
+```
+
+The Release workflow checks the versions match, builds, and publishes
+`@sinas/cli` to npm with provenance (npm trusted publishing; see the comment
+at the top of `.github/workflows/release.yml` for the one-time setup).
+
