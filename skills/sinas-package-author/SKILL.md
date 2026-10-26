@@ -344,22 +344,38 @@ connectors:
   - namespace: hubspot
     name: crm-api
     baseUrl: https://api.hubapi.com
-    auth: { type: bearer, secret: "{{HUBSPOT_TOKEN}}" }
+    auth: { type: bearer, secret: HUBSPOT_TOKEN }   # the *name* of a Secret
     timeoutSeconds: 30
     operations:
       - name: search-deals
         method: POST
         path: /crm/v3/objects/deals/search
-        parameters:
-          - { name: body, in: body, schema: { type: object } }
+        parameters:                      # JSON Schema of the operation's input
+          type: object
+          properties:
+            filterGroups: { type: array }
+            limit: { type: integer }
       - name: get-deal
         method: GET
-        path: /crm/v3/objects/deals/{dealId}
+        path: /crm/v3/objects/deals/{{ dealId }}
+        requestBodyMapping: query
         parameters:
-          - { name: dealId, in: path, schema: { type: string } }
+          type: object
+          properties:
+            dealId: { type: string }
+            properties: { type: string }
+          required: [dealId]
 ```
 
-Path params use `{paramName}`. `in` values: `path | query | body | header`.
+`parameters` is one JSON Schema object for the operation's input. Path
+params are Jinja placeholders (`{{ dealId }}`) and are taken out of the
+input; `requestBodyMapping` sends the rest as the JSON body (`json`, the
+default) or as query parameters (`query`). A GET never sends a body.
+
+`auth.secret` names the Secret holding the credential, never the value. To
+have the installer enter it, declare a `type: secret` variable with that name
+(`HUBSPOT_TOKEN`): the install stores the value as a shared Secret of that
+name.
 
 Auth types: `none | bearer | basic | api_key | sinas_token |
 oauth2_client_credentials | oauth2_authorization_code`. OAuth connectors
@@ -374,7 +390,7 @@ connectors:
       type: oauth2_client_credentials      # service-to-service
       tokenUrl: https://auth.example.com/oauth/token
       clientId: "${{ vars.CLIENT_ID }}"
-      clientSecret: "${{ vars.CLIENT_SECRET }}"
+      secret: CLIENT_SECRET              # Secret holding the client secret
       scopes: [read, write]
     # For per-user OAuth use type: oauth2_authorization_code — each user
     # clicks Connect in the console and tokens are stored encrypted per user.
